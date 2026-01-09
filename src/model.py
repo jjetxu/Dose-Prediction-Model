@@ -20,8 +20,8 @@ class PreoperativeANN(nn.Module):
 
 
 def train_model(model: nn.Module, X: torch.Tensor, y: torch.Tensor, epochs: int = 1000, lr: float = 0.01) -> nn.Module:
-    optimizer = optim.Adam(model.parameters(), lr=lr, weight_decay=1e-3)
-    loss_fn = nn.MSELoss()
+    optimizer = optim.Adam(model.parameters(), lr=lr, weight_decay=3e-3)
+    loss_fn = nn.L1Loss()
     for epoch in range(epochs):
         model.train()
         yhat = model(X)
@@ -35,12 +35,11 @@ def train_model(model: nn.Module, X: torch.Tensor, y: torch.Tensor, epochs: int 
 
 
 def evaluate_model(model: nn.Module, X: torch.Tensor, y: torch.Tensor) -> Tuple[float, float, float]:
-    loss_fn = nn.MSELoss()
+    loss_fn = nn.L1Loss()
     model.eval()
     with torch.no_grad():
         yhat = model(X)
-        mse = loss_fn(yhat, y).item()
         mae = torch.mean(torch.abs(yhat - y)).item()
         eps = 1e-8
         mape = (torch.mean(torch.abs((yhat - y) / (y + eps))) * 100.0).item()
-    return mse, mae, mape
+    return mae, mape

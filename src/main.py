@@ -16,11 +16,10 @@ def main():
 
     # train model
     model = PreoperativeANN(input_dim=len(FEATURES)).to(DEVICE)
-    model = train_model(model, X_train, y_train, epochs=1000, lr=0.01)
+    model = train_model(model, X_train, y_train, epochs=1500, lr=1e-3)
 
     # evaluate model
-    mse, mae, mape = evaluate_model(model, X_test, y_test)
-    print(f"Test MSE:  {mse:.6f}")
+    mae, mape = evaluate_model(model, X_test, y_test)
     print(f"Test MAE:  {mae:.6f}")
     print(f"Test MAPE: {mape:.3f}%")
 
@@ -38,7 +37,7 @@ def main():
                                 feature_index=FEATURE_INDEX,
                             )
             print(pred)
-        except KeyboardInterrupt:
+        except (KeyboardInterrupt, ValueError):
             print("\nExiting.")
             break
 

@@ -1,7 +1,7 @@
 import pandas as pd
-from config import DEVICE, PATH, FEATURES, FEATURE_INDEX
+from config import DEVICE, PATH, FEATURES, FEATURE_INDEX, MODEL_NAME
 from data import process_data
-from model import PreoperativeANN, train_model, evaluate_model
+from model import get_model, train_model, evaluate_model
 from inference import predict_preop_dose
 
 
@@ -13,10 +13,18 @@ def main():
 
     # process data
     X_train, y_train, X_test, y_test, stats = process_data(df, device=DEVICE)
+    print("X_train shape:", X_train.shape)
+    print("y_train shape:", y_train.shape)
 
+    print("X_train first row:", X_train[0])
+    print("y_train first row:", y_train[0])
+
+    print("X_train column means:", X_train.mean(dim=0))
+    print("X_train column stds: ", X_train.std(dim=0))
+    print("y_train mean:", y_train.mean().item(), "std:", y_train.std().item())
     # train model
-    model = PreoperativeANN(input_dim=len(FEATURES)).to(DEVICE)
-    model = train_model(model, X_train, y_train, epochs=1500, lr=1e-3)
+    model = get_model(MODEL_NAME, input_dim=len(FEATURES)).to(DEVICE)
+    model = train_model(model, X_train, y_train, epochs=2000, lr=0.2, weight_decay=0)
 
     # evaluate model
     mae, mape = evaluate_model(model, X_test, y_test)

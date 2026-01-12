@@ -31,7 +31,7 @@ def main():
             patientInfo = input("Format - sex (0/1), age, weight, sbp, dbp: ")
             patientSex, patientAge, patientWeight, patientSbp, patientDbp = patientInfo.split(",")
             pred, warnings = predict_preop_dose(
-                                sex=int(patientSex), age=int(patientAge), weight=float(patientWeight), sbp=float(patientSbp), dbp=float(patientDbp),
+                                sex=int(patientSex), age=float(patientAge), weight=float(patientWeight), sbp=float(patientSbp), dbp=float(patientDbp),
                                 model=model,
                                 stats=stats,
                                 feature_index=FEATURE_INDEX,

@@ -60,19 +60,80 @@ def train_model(
         loss.backward()
         optimizer.step()
 
-        if epoch % 100 == 0 or epoch == epochs - 1:
+        if epoch % 1000 == 0 or epoch == epochs - 1:
             print(f"Epoch: {epoch} | Train MAE: {loss.item():.6f}")
 
     return model
 
 
-def evaluate_model(model: nn.Module, X: torch.Tensor, y: torch.Tensor) -> Tuple[float, float]:
+def evaluate_model(model: nn.Module, X: torch.Tensor, y_norm: torch.Tensor, y_stats) -> Tuple[float, float]:
+    y_mean, y_std = y_stats
     model.eval()
     with torch.no_grad():
-        yhat = model(X)
-        mae = torch.mean(torch.abs(yhat - y)).item()
+        yhat_norm = model(X)
 
+        # denormalize back to mg
+        yhat = yhat_norm * y_std + y_mean
+        ytrue = y_norm * y_std + y_mean
+
+        mae = torch.mean(torch.abs(yhat - ytrue)).item()
         eps = 1e-8
-        mape = (torch.mean(torch.abs((yhat - y) / (y + eps))) * 100.0).item()
+        mape = (torch.mean(torch.abs((yhat - ytrue) / (ytrue + eps))) * 100.0).item()
 
     return mae, mape
+
+
+def get_test_predictions(
+    model: torch.nn.Module,
+    X_test: torch.Tensor,
+    y_test_norm: torch.Tensor,
+    y_stats,
+):
+    """
+    Returns true and predicted doses in mg for the test set.
+    """
+    y_mean, y_std = y_stats
+
+    model.eval()
+    with torch.no_grad():
+        y_pred_norm = model(X_test)
+
+        # denormalize
+        y_pred = y_pred_norm * y_std + y_mean
+        y_true = y_test_norm * y_std + y_mean
+
+    return y_true.squeeze(), y_pred.squeeze()
+
+
+def bucketed_metrics_by_dose(y_true: torch.Tensor, y_pred: torch.Tensor):
+    """
+    Computes MAE and MAPE per true-dose quartile.
+    """
+    # convert to 1D CPU tensors
+    y_true = y_true.detach().cpu()
+    y_pred = y_pred.detach().cpu()
+
+    # compute quartile cutoffs
+    q25, q50, q75 = torch.quantile(y_true, torch.tensor([0.1, 0.5, 0.75]))
+
+    buckets = {
+        "10th percentile (lowest dose)": y_true <= q25,
+        "Q2": (y_true > q25) & (y_true <= q50),
+        "Q3": (y_true > q50) & (y_true <= q75),
+        "Q4 (highest dose)": y_true > q75,
+    }
+
+    print("\nBucketed performance by TRUE dose:")
+    for name, mask in buckets.items():
+        yt = y_true[mask]
+        yp = y_pred[mask]
+
+        mae = torch.mean(torch.abs(yp - yt))
+        mape = torch.mean(torch.abs((yp - yt) / (yt + 1e-8))) * 100.0
+
+        print(
+            f"{name:18s} | "
+            f"N={yt.numel():3d} | "
+            f"MAE={mae.item():6.2f} mg | "
+            f"MAPE={mape.item():6.2f}%"
+        )

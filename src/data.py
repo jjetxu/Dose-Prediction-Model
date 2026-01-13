@@ -4,7 +4,7 @@ from typing import Dict, Tuple
 from config import FEATURES, FEATURE_INDEX, DEVICE
 
 
-def process_data(df: pd.DataFrame, device: torch.device = DEVICE) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, Dict[int, Tuple[torch.Tensor, torch.Tensor]]]:
+def process_data(df: pd.DataFrame, device: torch.device = DEVICE) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, Dict[int, Tuple[torch.Tensor, torch.Tensor]], Tuple[torch.Tensor, torch.Tensor]]:
     required_cols = FEATURES + ["preoperative_dose"]
     df = df.dropna(subset=required_cols)
     df = df[df["preoperative_dose"] > 0]
@@ -34,5 +34,13 @@ def process_data(df: pd.DataFrame, device: torch.device = DEVICE) -> Tuple[torch
             std = 1.0
         X_train[:, idx] = (X_train[:, idx] - mean) / std
         X_test[:, idx] = (X_test[:, idx] - mean) / std
+    y_mean = y_train.mean()
+    y_std = y_train.std()
+    if y_std == 0:
+        y_std = torch.tensor(1.0, device=device)
 
-    return X_train, y_train, X_test, y_test, stats
+    y_train_norm = (y_train - y_mean) / y_std
+    y_test_norm  = (y_test  - y_mean) / y_std
+
+    y_stats = (y_mean, y_std)
+    return X_train, y_train_norm, X_test, y_test_norm, stats, y_stats
